@@ -23,17 +23,26 @@
             overflow: hidden;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         }
-        #root { 
-            position: relative; 
+        .app-container {
+            position: relative;
             height: 100vh;
             width: 100vw;
         }
         #map { 
             width: 100%; 
             height: 100%;
-            position: absolute;
+        }
+        #react-root { 
+            position: fixed;
             top: 0;
             left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1000;
+        }
+        #react-root > * {
+            pointer-events: auto;
         }
         #sidebar { 
             position: fixed; 
@@ -44,7 +53,7 @@
             background: white; 
             box-shadow: -2px 0 8px rgba(0,0,0,0.15); 
             transition: right 0.3s ease; 
-            z-index: 1000; 
+            z-index: 1001; 
             overflow-y: auto; 
             padding: 16px;
         }
@@ -88,28 +97,15 @@
             cursor: pointer;
             flex-shrink: 0;
             border: 1px solid #d9d9d9;
-            transition: all 0.2s;
-        }
-        
-        .media-item:hover {
-            background: #e6f7ff;
-            border-color: #1890ff;
-        }
-        
-        .hidden {
-            display: none;
         }
     </style>    
 </head>
 <body>
-    <!-- Отдельный контейнер для карты вне React -->
-    <div id="map"></div>
-    
-    <!-- React приложение -->
-    <div id="root">
-        <div class="loading">
-            Загрузка...
-        </div>
+    <div class="app-container">
+        <!-- Карта -->
+        <div id="map"></div>
+        <!-- React приложение -->
+        <div id="react-root"></div>
     </div>
 
     <script type="text/babel">
@@ -122,30 +118,24 @@
             kremlin: {
                 title: "Нижегородский кремль",
                 rating: 5,
-                description: "Исторический центр Нижнего Новгорода, древняя крепость с прекрасным видом на слияние Оки и Волги. Кремль был построен в XVI веке и насчитывает 13 башен."
+                description: "Исторический центр Нижнего Новгорода, древняя крепость с прекрасным видом на слияние Оки и Волги."
             },
             park: {
                 title: "Парк Швейцария", 
                 rating: 4,
-                description: "Крупный парк культуры и отдыха в Нижнем Новгороде. Прекрасное место для прогулок, отдыха с детьми и активного времяпровождения."
+                description: "Крупный парк культуры и отдыха в Нижнем Новгороде."
             },
             route: {
                 title: "Маршрут: Кремль → Парк Швейцария",
                 rating: 4,
-                description: "Живописный маршрут от исторического центра города до одного из самых красивых парков. Протяженность около 3 км."
+                description: "Живописный маршрут протяженностью около 3 км."
             }
-        };
-
-        // Глобальные переменные для связи между картой и React
-        window.mapApp = {
-            openSidebar: null,
-            closeSidebar: null
         };
 
         function Sidebar({ isOpen, locationData, onClose }) {
             const [modalVisible, setModalVisible] = useState(false);
             
-            if (!isOpen || !locationData) return null;
+            if (!locationData) return null;
 
             const mediaItems = [
                 { type: 'photo', label: 'Фото 1' },
@@ -157,30 +147,17 @@
             return (
                 <div id="sidebar" className={isOpen ? 'open' : ''}>
                     <Card 
-                        title={
-                            <div style={{ fontSize: '18px', fontWeight: '600' }}>
-                                {locationData.title}
-                            </div>
-                        }
+                        title={locationData.title}
                         extra={
                             <Button 
                                 type="text" 
                                 onClick={onClose}
-                                style={{ 
-                                    fontSize: '20px', 
-                                    fontWeight: 'bold',
-                                    width: '32px',
-                                    height: '32px',
-                                    padding: 0
-                                }}
+                                style={{ fontSize: '20px', fontWeight: 'bold' }}
                             >
                                 ×
                             </Button>
                         }
-                        style={{ 
-                            border: 'none',
-                            height: '100%'
-                        }}
+                        style={{ border: 'none', height: '100%' }}
                         bodyStyle={{ padding: '16px 0' }}
                     >
                         <div className="media-gallery">
@@ -197,18 +174,9 @@
                             ))}
                         </div>
                         
-                        <Rate 
-                            disabled 
-                            defaultValue={locationData.rating} 
-                            style={{ marginBottom: '16px' }} 
-                        />
+                        <Rate disabled defaultValue={locationData.rating} style={{ marginBottom: '16px' }} />
                         
-                        <Paragraph style={{ 
-                            fontSize: '14px', 
-                            lineHeight: '1.6',
-                            marginBottom: 0,
-                            color: '#595959'
-                        }}>
+                        <Paragraph style={{ fontSize: '14px', lineHeight: '1.6', color: '#595959' }}>
                             {locationData.description}
                         </Paragraph>
                         
@@ -219,7 +187,6 @@
                             footer={null}
                             width="90%"
                             style={{ top: '20px' }}
-                            bodyStyle={{ padding: '20px' }}
                         >
                             <div style={{ 
                                 width: '100%', 
@@ -230,7 +197,7 @@
                                 justifyContent: 'center',
                                 borderRadius: '6px'
                             }}>
-                                <span style={{ color: '#999' }}>Здесь будет увеличенное фото</span>
+                                Увеличенное фото
                             </div>
                         </Modal>
                     </Card>
@@ -243,23 +210,36 @@
             const [currentLocation, setCurrentLocation] = useState(null);
             const [mapReady, setMapReady] = useState(false);
 
-            // Регистрируем функции для глобального доступа
             useEffect(() => {
-                window.mapApp.openSidebar = (locationKey) => {
-                    setCurrentLocation(locationsData[locationKey]);
-                    setSidebarOpen(true);
-                };
-                
-                window.mapApp.closeSidebar = () => {
-                    setSidebarOpen(false);
-                };
-                
-                window.mapApp.setMapReady = setMapReady;
+                // Инициализация карты после монтирования компонента
+                ymaps.ready(() => {
+                    try {
+                        const mapElement = document.getElementById('map');
+                        if (!mapElement) {
+                            console.log('Элемент карты не найден, повторная попытка...');
+                            setTimeout(() => {
+                                initMap(setMapReady, setCurrentLocation, setSidebarOpen);
+                            }, 100);
+                            return;
+                        }
+
+                        initMap(setMapReady, setCurrentLocation, setSidebarOpen);
+                    } catch (error) {
+                        console.error('Ошибка:', error);
+                    }
+                });
             }, []);
 
             if (!mapReady) {
                 return (
-                    <div className="loading">
+                    <div style={{ 
+                        display: 'flex', 
+                        justifyContent: 'center', 
+                        alignItems: 'center', 
+                        height: '100vh',
+                        background: 'rgba(255,255,255,0.9)',
+                        pointerEvents: 'auto'
+                    }}>
                         <Spin size="large" />
                         <span style={{ marginLeft: '10px' }}>Загрузка карты...</span>
                     </div>
@@ -275,95 +255,77 @@
             );
         }
 
-        // Инициализация карты (отдельно от React)
-        function initMap() {
-            ymaps.ready(() => {
-                try {
-                    const mapElement = document.getElementById('map');
-                    if (!mapElement) {
-                        console.error('Элемент карты не найден');
-                        return;
-                    }
+        // Функция инициализации карты
+        function initMap(setMapReady, setCurrentLocation, setSidebarOpen) {
+            const mapElement = document.getElementById('map');
+            if (!mapElement) {
+                console.error('Элемент карты всё ещё не найден');
+                return;
+            }
 
-                    const myMap = new ymaps.Map('map', {
-                        center: [56.326887, 44.005986],
-                        zoom: 12
-                    });
+            console.log('Инициализация карты...');
 
-                    const kremlinCoords = [56.3280, 44.0020];
-                    const parkCoords = [56.3150, 43.9850];
-
-                    // Маршрут
-                    const route = new ymaps.Polyline([kremlinCoords, parkCoords], {
-                        hintContent: "Маршрут: Кремль → Парк Швейцария"
-                    }, {
-                        strokeColor: "#1e98ff",
-                        strokeWidth: 4,
-                        strokeOpacity: 0.8
-                    });
-
-                    // Метки
-                    const kremlinPlacemark = new ymaps.Placemark(kremlinCoords, {
-                        hintContent: 'Нижегородский кремль'
-                    }, {
-                        preset: 'islands#blueIcon'
-                    });
-
-                    const parkPlacemark = new ymaps.Placemark(parkCoords, {
-                        hintContent: 'Парк Швейцария'
-                    }, {
-                        preset: 'islands#greenIcon'
-                    });
-
-                    myMap.geoObjects.add(route);
-                    myMap.geoObjects.add(kremlinPlacemark);
-                    myMap.geoObjects.add(parkPlacemark);
-
-                    // Обработчики кликов
-                    kremlinPlacemark.events.add('click', (e) => {
-                        e.preventDefault();
-                        if (window.mapApp.openSidebar) {
-                            window.mapApp.openSidebar('kremlin');
-                        }
-                    });
-
-                    parkPlacemark.events.add('click', (e) => {
-                        e.preventDefault();
-                        if (window.mapApp.openSidebar) {
-                            window.mapApp.openSidebar('park');
-                        }
-                    });
-
-                    route.events.add('click', (e) => {
-                        e.preventDefault();
-                        if (window.mapApp.openSidebar) {
-                            window.mapApp.openSidebar('route');
-                        }
-                    });
-
-                    // Закрывать сайдбар при клике на карту
-                    myMap.events.add('click', () => {
-                        if (window.mapApp.closeSidebar) {
-                            window.mapApp.closeSidebar();
-                        }
-                    });
-
-                    // Сообщаем React что карта готова
-                    if (window.mapApp.setMapReady) {
-                        window.mapApp.setMapReady(true);
-                    }
-
-                } catch (error) {
-                    console.error('Ошибка инициализации карты:', error);
-                }
+            const myMap = new ymaps.Map('map', {
+                center: [56.326887, 44.005986],
+                zoom: 12
             });
+
+            const kremlinCoords = [56.3280, 44.0020];
+            const parkCoords = [56.3150, 43.9850];
+
+            // Маршрут
+            const route = new ymaps.Polyline([kremlinCoords, parkCoords], {}, {
+                strokeColor: "#1e98ff",
+                strokeWidth: 4,
+                strokeOpacity: 0.8
+            });
+
+            // Метки
+            const kremlinPlacemark = new ymaps.Placemark(kremlinCoords, {
+                hintContent: 'Нижегородский кремль'
+            }, {
+                preset: 'islands#blueIcon'
+            });
+
+            const parkPlacemark = new ymaps.Placemark(parkCoords, {
+                hintContent: 'Парк Швейцария'
+            }, {
+                preset: 'islands#greenIcon'
+            });
+
+            myMap.geoObjects.add(route);
+            myMap.geoObjects.add(kremlinPlacemark);
+            myMap.geoObjects.add(parkPlacemark);
+
+            // Обработчики кликов
+            const openSidebar = (locationKey) => {
+                setCurrentLocation(locationsData[locationKey]);
+                setSidebarOpen(true);
+            };
+
+            kremlinPlacemark.events.add('click', () => {
+                openSidebar('kremlin');
+            });
+
+            parkPlacemark.events.add('click', () => {
+                openSidebar('park');
+            });
+
+            route.events.add('click', () => {
+                openSidebar('route');
+            });
+
+            // Закрывать сайдбар при клике на карту
+            myMap.events.add('click', () => {
+                setSidebarOpen(false);
+            });
+
+            setMapReady(true);
+            console.log('Карта успешно инициализирована');
         }
 
-        // Запускаем инициализацию карты
-        initMap();
-
-        // Рендерим React приложение
-        ReactDOM.render(<App />, document.getElementById('root'));
+        // Рендерим приложение
+        ReactDOM.render(<App />, document.getElementById('react-root'));
     </script>
 </body>
 </html>
