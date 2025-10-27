@@ -97,6 +97,42 @@
             cursor: pointer;
             flex-shrink: 0;
             border: 1px solid #d9d9d9;
+            transition: all 0.2s;
+        }
+        
+        .media-item:hover {
+            background: #e6f7ff;
+            border-color: #1890ff;
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+            margin-top: 16px;
+        }
+        
+        .location-info {
+            background: #f9f9f9;
+            padding: 12px;
+            border-radius: 6px;
+            margin: 12px 0;
+        }
+        
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            margin: 4px 0;
+            font-size: 14px;
+        }
+        
+        .info-label {
+            color: #666;
+            font-weight: 500;
+        }
+        
+        .info-value {
+            color: #1890ff;
+            font-weight: 600;
         }
     </style>    
 </head>
@@ -110,44 +146,86 @@
 
     <script type="text/babel">
         const { useState, useEffect } = React;
-        const { Card, Rate, Typography, Modal, Button, Spin } = antd;
-        const { Paragraph } = Typography;
+        const { Card, Rate, Typography, Modal, Button, Spin, Tag, Divider } = antd;
+        const { Paragraph, Text } = Typography;
 
         // Данные для локаций
         const locationsData = {
             kremlin: {
                 title: "Нижегородский кремль",
                 rating: 5,
-                description: "Исторический центр Нижнего Новгорода, древняя крепость с прекрасным видом на слияние Оки и Волги."
+                description: "Исторический центр Нижнего Новгорода, древняя крепость с прекрасным видом на слияние Оки и Волги. Кремль был построен в XVI веке и насчитывает 13 башен.",
+                address: "Кремль, 6А",
+                hours: "10:00 - 18:00",
+                price: "Вход свободный",
+                type: "Исторический памятник",
+                features: ["Смотровая площадка", "Музеи", "Экскурсии", "Парковка"]
             },
             park: {
                 title: "Парк Швейцария", 
                 rating: 4,
-                description: "Крупный парк культуры и отдыха в Нижнем Новгороде."
+                description: "Крупный парк культуры и отдыха в Нижнем Новгороде. Прекрасное место для прогулок, отдыха с детьми и активного времяпровождения.",
+                address: "проспект Гагарина, 35",
+                hours: "Круглосуточно",
+                price: "Бесплатно",
+                type: "Парк отдыха",
+                features: ["Аттракционы", "Велосипедные дорожки", "Кафе", "Детские площадки"]
             },
             route: {
                 title: "Маршрут: Кремль → Парк Швейцария",
                 rating: 4,
-                description: "Живописный маршрут протяженностью около 3 км."
+                description: "Живописный маршрут от исторического центра города до одного из самых красивых парков. Протяженность около 3 км.",
+                duration: "40-50 минут",
+                distance: "3.2 км",
+                difficulty: "Легкий",
+                type: "Пешеходный маршрут",
+                features: ["Живописные виды", "Исторические здания", "Пешеходные дорожки"]
             }
         };
 
         function Sidebar({ isOpen, locationData, onClose }) {
             const [modalVisible, setModalVisible] = useState(false);
+            const [selectedMedia, setSelectedMedia] = useState(null);
             
             if (!locationData) return null;
 
             const mediaItems = [
-                { type: 'photo', label: 'Фото 1' },
-                { type: 'photo', label: 'Фото 2' }, 
-                { type: 'video', label: 'Видео' },
-                { type: 'photo', label: 'Фото 3' }
+                { type: 'photo', label: 'Фото 1', id: 1 },
+                { type: 'photo', label: 'Фото 2', id: 2 }, 
+                { type: 'video', label: 'Видео', id: 3 },
+                { type: 'photo', label: 'Фото 3', id: 4 }
             ];
+
+            const handleMediaClick = (media) => {
+                setSelectedMedia(media);
+                setModalVisible(true);
+            };
+
+            const handleNavigate = () => {
+                alert(`Начинаем навигацию к ${locationData.title}`);
+                // Здесь можно добавить логику навигации
+            };
+
+            const handleShare = () => {
+                if (navigator.share) {
+                    navigator.share({
+                        title: locationData.title,
+                        text: locationData.description,
+                        url: window.location.href
+                    });
+                } else {
+                    alert('Ссылка скопирована в буфер обмена!');
+                }
+            };
 
             return (
                 <div id="sidebar" className={isOpen ? 'open' : ''}>
                     <Card 
-                        title={locationData.title}
+                        title={
+                            <div style={{ fontSize: '18px', fontWeight: '600' }}>
+                                {locationData.title}
+                            </div>
+                        }
                         extra={
                             <Button 
                                 type="text" 
@@ -160,12 +238,70 @@
                         style={{ border: 'none', height: '100%' }}
                         bodyStyle={{ padding: '16px 0' }}
                     >
+                        {/* Информация о локации */}
+                        <div className="location-info">
+                            <div className="info-item">
+                                <span className="info-label">Тип:</span>
+                                <span className="info-value">{locationData.type}</span>
+                            </div>
+                            {locationData.address && (
+                                <div className="info-item">
+                                    <span className="info-label">Адрес:</span>
+                                    <span className="info-value">{locationData.address}</span>
+                                </div>
+                            )}
+                            {locationData.hours && (
+                                <div className="info-item">
+                                    <span className="info-label">Время работы:</span>
+                                    <span className="info-value">{locationData.hours}</span>
+                                </div>
+                            )}
+                            {locationData.price && (
+                                <div className="info-item">
+                                    <span className="info-label">Стоимость:</span>
+                                    <span className="info-value">{locationData.price}</span>
+                                </div>
+                            )}
+                            {locationData.distance && (
+                                <div className="info-item">
+                                    <span className="info-label">Расстояние:</span>
+                                    <span className="info-value">{locationData.distance}</span>
+                                </div>
+                            )}
+                            {locationData.duration && (
+                                <div className="info-item">
+                                    <span className="info-label">Время пути:</span>
+                                    <span className="info-value">{locationData.duration}</span>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Особенности */}
+                        <div style={{ margin: '12px 0' }}>
+                            <Text strong>Особенности:</Text>
+                            <div style={{ marginTop: '8px' }}>
+                                {locationData.features.map((feature, index) => (
+                                    <Tag 
+                                        key={index} 
+                                        color="blue" 
+                                        style={{ margin: '2px' }}
+                                    >
+                                        {feature}
+                                    </Tag>
+                                ))}
+                            </div>
+                        </div>
+
+                        <Divider />
+                        
+                        {/* Галерея медиа */}
+                        <Text strong>Фото и видео:</Text>
                         <div className="media-gallery">
-                            {mediaItems.map((item, index) => (
+                            {mediaItems.map((item) => (
                                 <div 
-                                    key={index}
+                                    key={item.id}
                                     className="media-item"
-                                    onClick={() => setModalVisible(true)}
+                                    onClick={() => handleMediaClick(item)}
                                 >
                                     <span style={{ color: '#999', fontSize: '12px' }}>
                                         {item.label}
@@ -174,14 +310,50 @@
                             ))}
                         </div>
                         
-                        <Rate disabled defaultValue={locationData.rating} style={{ marginBottom: '16px' }} />
+                        {/* Рейтинг */}
+                        <div style={{ margin: '16px 0' }}>
+                            <Text strong>Рейтинг:</Text>
+                            <div>
+                                <Rate disabled defaultValue={locationData.rating} />
+                                <span style={{ marginLeft: '8px', color: '#faad14' }}>
+                                    {locationData.rating}/5
+                                </span>
+                            </div>
+                        </div>
                         
-                        <Paragraph style={{ fontSize: '14px', lineHeight: '1.6', color: '#595959' }}>
-                            {locationData.description}
-                        </Paragraph>
+                        {/* Описание */}
+                        <div style={{ margin: '16px 0' }}>
+                            <Text strong>Описание:</Text>
+                            <Paragraph style={{ 
+                                fontSize: '14px', 
+                                lineHeight: '1.6', 
+                                color: '#595959',
+                                marginTop: '8px'
+                            }}>
+                                {locationData.description}
+                            </Paragraph>
+                        </div>
                         
+                        {/* Кнопки действий */}
+                        <div className="action-buttons">
+                            <Button 
+                                type="primary" 
+                                onClick={handleNavigate}
+                                style={{ flex: 1 }}
+                            >
+                                🗺️ Маршрут
+                            </Button>
+                            <Button 
+                                onClick={handleShare}
+                                style={{ flex: 1 }}
+                            >
+                                📤 Поделиться
+                            </Button>
+                        </div>
+                        
+                        {/* Модальное окно для медиа */}
                         <Modal
-                            title="Увеличенное фото"
+                            title={`${selectedMedia?.label} - ${locationData.title}`}
                             visible={modalVisible}
                             onCancel={() => setModalVisible(false)}
                             footer={null}
@@ -195,9 +367,21 @@
                                 display: 'flex',
                                 alignItems: 'center', 
                                 justifyContent: 'center',
-                                borderRadius: '6px'
+                                borderRadius: '6px',
+                                flexDirection: 'column',
+                                gap: '16px'
                             }}>
-                                Увеличенное фото
+                                <span style={{ fontSize: '48px' }}>
+                                    {selectedMedia?.type === 'video' ? '🎥' : '📷'}
+                                </span>
+                                <span style={{ color: '#999', fontSize: '16px' }}>
+                                    {selectedMedia?.type === 'video' 
+                                        ? 'Здесь будет видео' 
+                                        : 'Здесь будет увеличенное фото'}
+                                </span>
+                                <Text type="secondary">
+                                    {selectedMedia?.label}
+                                </Text>
                             </div>
                         </Modal>
                     </Card>
@@ -211,18 +395,15 @@
             const [mapReady, setMapReady] = useState(false);
 
             useEffect(() => {
-                // Инициализация карты после монтирования компонента
                 ymaps.ready(() => {
                     try {
                         const mapElement = document.getElementById('map');
                         if (!mapElement) {
-                            console.log('Элемент карты не найден, повторная попытка...');
                             setTimeout(() => {
                                 initMap(setMapReady, setCurrentLocation, setSidebarOpen);
                             }, 100);
                             return;
                         }
-
                         initMap(setMapReady, setCurrentLocation, setSidebarOpen);
                     } catch (error) {
                         console.error('Ошибка:', error);
@@ -255,15 +436,12 @@
             );
         }
 
-        // Функция инициализации карты
         function initMap(setMapReady, setCurrentLocation, setSidebarOpen) {
             const mapElement = document.getElementById('map');
             if (!mapElement) {
-                console.error('Элемент карты всё ещё не найден');
+                console.error('Элемент карты не найден');
                 return;
             }
-
-            console.log('Инициализация карты...');
 
             const myMap = new ymaps.Map('map', {
                 center: [56.326887, 44.005986],
@@ -274,23 +452,30 @@
             const parkCoords = [56.3150, 43.9850];
 
             // Маршрут
-            const route = new ymaps.Polyline([kremlinCoords, parkCoords], {}, {
+            const route = new ymaps.Polyline([kremlinCoords, parkCoords], {
+                hintContent: "Маршрут: Кремль → Парк Швейцария",
+                balloonContent: "Кликните для подробной информации"
+            }, {
                 strokeColor: "#1e98ff",
                 strokeWidth: 4,
                 strokeOpacity: 0.8
             });
 
-            // Метки
+            // Метки с улучшенными подсказками
             const kremlinPlacemark = new ymaps.Placemark(kremlinCoords, {
-                hintContent: 'Нижегородский кремль'
+                hintContent: 'Нижегородский кремль - Кликните для информации',
+                balloonContent: 'Кликните для подробной информации о Кремле'
             }, {
-                preset: 'islands#blueIcon'
+                preset: 'islands#blueIcon',
+                iconColor: '#1890ff'
             });
 
             const parkPlacemark = new ymaps.Placemark(parkCoords, {
-                hintContent: 'Парк Швейцария'
+                hintContent: 'Парк Швейцария - Кликните для информации',
+                balloonContent: 'Кликните для подробной информации о парке'
             }, {
-                preset: 'islands#greenIcon'
+                preset: 'islands#greenIcon',
+                iconColor: '#52c41a'
             });
 
             myMap.geoObjects.add(route);
@@ -321,10 +506,8 @@
             });
 
             setMapReady(true);
-            console.log('Карта успешно инициализирована');
         }
 
-        // Рендерим приложение
         ReactDOM.render(<App />, document.getElementById('react-root'));
     </script>
 </body>
