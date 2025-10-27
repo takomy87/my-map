@@ -28,16 +28,12 @@
             height: 100vh;
             width: 100vw;
         }
-        #map-container {
+        #map { 
             width: 100%; 
             height: 100%;
             position: absolute;
             top: 0;
             left: 0;
-        }
-        #map { 
-            width: 100%; 
-            height: 100%;
         }
         #sidebar { 
             position: fixed; 
@@ -99,20 +95,27 @@
             background: #e6f7ff;
             border-color: #1890ff;
         }
+        
+        .hidden {
+            display: none;
+        }
     </style>    
 </head>
 <body>
+    <!-- Отдельный контейнер для карты вне React -->
+    <div id="map"></div>
+    
+    <!-- React приложение -->
     <div id="root">
-        <div id="map-container">
-            <div id="map"></div>
+        <div class="loading">
+            Загрузка...
         </div>
-        <div id="sidebar"></div>
     </div>
 
     <script type="text/babel">
-        const { useState, useEffect, useRef } = React;
+        const { useState, useEffect } = React;
         const { Card, Rate, Typography, Modal, Button, Spin } = antd;
-        const { Title, Paragraph } = Typography;
+        const { Paragraph } = Typography;
 
         // Данные для локаций
         const locationsData = {
@@ -133,6 +136,12 @@
             }
         };
 
+        // Глобальные переменные для связи между картой и React
+        window.mapApp = {
+            openSidebar: null,
+            closeSidebar: null
+        };
+
         function Sidebar({ isOpen, locationData, onClose }) {
             const [modalVisible, setModalVisible] = useState(false);
             
@@ -145,7 +154,7 @@
                 { type: 'photo', label: 'Фото 3' }
             ];
 
-            return ReactDOM.createPortal(
+            return (
                 <div id="sidebar" className={isOpen ? 'open' : ''}>
                     <Card 
                         title={
@@ -225,119 +234,30 @@
                             </div>
                         </Modal>
                     </Card>
-                </div>,
-                document.getElementById('sidebar')
+                </div>
             );
         }
 
-        function MapComponent() {
+        function App() {
             const [sidebarOpen, setSidebarOpen] = useState(false);
             const [currentLocation, setCurrentLocation] = useState(null);
-            const [mapLoaded, setMapLoaded] = useState(false);
-            const mapRef = useRef(null);
+            const [mapReady, setMapReady] = useState(false);
 
+            // Регистрируем функции для глобального доступа
             useEffect(() => {
-                // Ждем полной загрузки DOM
-                if (mapRef.current || !ymaps) return;
-
-                const initMap = () => {
-                    try {
-                        const mapElement = document.getElementById('map');
-                        if (!mapElement) {
-                            console.error('Элемент карты не найден');
-                            return;
-                        }
-
-                        const myMap = new ymaps.Map('map', {
-                            center: [56.326887, 44.005986],
-                            zoom: 12,
-                            controls: ['zoomControl', 'fullscreenControl']
-                        }, {
-                            searchControlProvider: 'yandex#search'
-                        });
-
-                        // Ждем готовности карты
-                        myMap.events.add('load', () => {
-                            setMapLoaded(true);
-                            
-                            const kremlinCoords = [56.3280, 44.0020];
-                            const parkCoords = [56.3150, 43.9850];
-
-                            // Маршрут
-                            const route = new ymaps.Polyline([kremlinCoords, parkCoords], {
-                                hintContent: "Маршрут: Кремль → Парк Швейцария"
-                            }, {
-                                strokeColor: "#1e98ff",
-                                strokeWidth: 4,
-                                strokeOpacity: 0.8
-                            });
-
-                            // Метки
-                            const kremlinPlacemark = new ymaps.Placemark(kremlinCoords, {
-                                hintContent: 'Нижегородский кремль',
-                                balloonContent: 'Нижегородский кремль'
-                            }, {
-                                preset: 'islands#blueIcon'
-                            });
-
-                            const parkPlacemark = new ymaps.Placemark(parkCoords, {
-                                hintContent: 'Парк Швейцария',
-                                balloonContent: 'Парк Швейцария'
-                            }, {
-                                preset: 'islands#greenIcon'
-                            });
-
-                            myMap.geoObjects.add(route);
-                            myMap.geoObjects.add(kremlinPlacemark);
-                            myMap.geoObjects.add(parkPlacemark);
-
-                            // Обработчики кликов
-                            const openSidebar = (location) => {
-                                setCurrentLocation(location);
-                                setSidebarOpen(true);
-                            };
-
-                            kremlinPlacemark.events.add('click', (e) => {
-                                e.preventDefault();
-                                openSidebar(locationsData.kremlin);
-                            });
-
-                            parkPlacemark.events.add('click', (e) => {
-                                e.preventDefault();
-                                openSidebar(locationsData.park);
-                            });
-
-                            route.events.add('click', (e) => {
-                                e.preventDefault();
-                                openSidebar(locationsData.route);
-                            });
-
-                            // Закрывать сайдбар при клике на карту
-                            myMap.events.add('click', () => {
-                                setSidebarOpen(false);
-                            });
-                        });
-
-                        mapRef.current = myMap;
-
-                    } catch (error) {
-                        console.error('Ошибка инициализации карты:', error);
-                        setMapLoaded(true);
-                    }
+                window.mapApp.openSidebar = (locationKey) => {
+                    setCurrentLocation(locationsData[locationKey]);
+                    setSidebarOpen(true);
                 };
-
-                // Запускаем инициализацию когда ymaps готов
-                ymaps.ready(initMap);
-
-                return () => {
-                    // Очистка при размонтировании
-                    if (mapRef.current) {
-                        mapRef.current.destroy();
-                    }
+                
+                window.mapApp.closeSidebar = () => {
+                    setSidebarOpen(false);
                 };
+                
+                window.mapApp.setMapReady = setMapReady;
             }, []);
 
-            if (!mapLoaded) {
+            if (!mapReady) {
                 return (
                     <div className="loading">
                         <Spin size="large" />
@@ -355,26 +275,95 @@
             );
         }
 
-        function App() {
-            return <MapComponent />;
+        // Инициализация карты (отдельно от React)
+        function initMap() {
+            ymaps.ready(() => {
+                try {
+                    const mapElement = document.getElementById('map');
+                    if (!mapElement) {
+                        console.error('Элемент карты не найден');
+                        return;
+                    }
+
+                    const myMap = new ymaps.Map('map', {
+                        center: [56.326887, 44.005986],
+                        zoom: 12
+                    });
+
+                    const kremlinCoords = [56.3280, 44.0020];
+                    const parkCoords = [56.3150, 43.9850];
+
+                    // Маршрут
+                    const route = new ymaps.Polyline([kremlinCoords, parkCoords], {
+                        hintContent: "Маршрут: Кремль → Парк Швейцария"
+                    }, {
+                        strokeColor: "#1e98ff",
+                        strokeWidth: 4,
+                        strokeOpacity: 0.8
+                    });
+
+                    // Метки
+                    const kremlinPlacemark = new ymaps.Placemark(kremlinCoords, {
+                        hintContent: 'Нижегородский кремль'
+                    }, {
+                        preset: 'islands#blueIcon'
+                    });
+
+                    const parkPlacemark = new ymaps.Placemark(parkCoords, {
+                        hintContent: 'Парк Швейцария'
+                    }, {
+                        preset: 'islands#greenIcon'
+                    });
+
+                    myMap.geoObjects.add(route);
+                    myMap.geoObjects.add(kremlinPlacemark);
+                    myMap.geoObjects.add(parkPlacemark);
+
+                    // Обработчики кликов
+                    kremlinPlacemark.events.add('click', (e) => {
+                        e.preventDefault();
+                        if (window.mapApp.openSidebar) {
+                            window.mapApp.openSidebar('kremlin');
+                        }
+                    });
+
+                    parkPlacemark.events.add('click', (e) => {
+                        e.preventDefault();
+                        if (window.mapApp.openSidebar) {
+                            window.mapApp.openSidebar('park');
+                        }
+                    });
+
+                    route.events.add('click', (e) => {
+                        e.preventDefault();
+                        if (window.mapApp.openSidebar) {
+                            window.mapApp.openSidebar('route');
+                        }
+                    });
+
+                    // Закрывать сайдбар при клике на карту
+                    myMap.events.add('click', () => {
+                        if (window.mapApp.closeSidebar) {
+                            window.mapApp.closeSidebar();
+                        }
+                    });
+
+                    // Сообщаем React что карта готова
+                    if (window.mapApp.setMapReady) {
+                        window.mapApp.setMapReady(true);
+                    }
+
+                } catch (error) {
+                    console.error('Ошибка инициализации карты:', error);
+                }
+            });
         }
 
-        // Безопасный рендер с проверкой
-        function safeRender() {
-            const rootElement = document.getElementById('root');
-            if (rootElement && typeof React !== 'undefined' && typeof ReactDOM !== 'undefined') {
-                ReactDOM.render(<App />, rootElement);
-            } else {
-                setTimeout(safeRender, 100);
-            }
-        }
+        // Запускаем инициализацию карты
+        initMap();
 
-        // Запускаем когда DOM готов
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', safeRender);
-        } else {
-            safeRender();
-        }
+        // Рендерим React приложение
+        ReactDOM.render(<App />, document.getElementById('root'));
     </script>
 </body>
 </html>
