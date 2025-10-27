@@ -211,11 +211,6 @@
                 setModalVisible(true);
             };
 
-            const handleNavigate = () => {
-                alert(`Начинаем навигацию к ${locationData.title}`);
-                // Здесь можно добавить логику навигации
-            };
-
             const handleShare = () => {
                 if (navigator.share) {
                     navigator.share({
@@ -345,13 +340,6 @@
                         {/* Кнопки действий */}
                         <div className="action-buttons">
                             <Button 
-                                type="primary" 
-                                onClick={handleNavigate}
-                                style={{ flex: 1 }}
-                            >
-                                🗺️ Маршрут
-                            </Button>
-                            <Button 
                                 onClick={handleShare}
                                 style={{ flex: 1 }}
                             >
@@ -462,7 +450,6 @@
             // Маршрут
             const route = new ymaps.Polyline([kremlinCoords, parkCoords], {
                 hintContent: "Маршрут: Кремль → Парк Швейцария",
-                balloonContent: "Кликните для подробной информации"
             }, {
                 strokeColor: "#1e98ff",
                 strokeWidth: 4,
@@ -472,7 +459,6 @@
             // Метки с улучшенными подсказками
             const kremlinPlacemark = new ymaps.Placemark(kremlinCoords, {
                 hintContent: 'Нижегородский кремль - Кликните для информации',
-                balloonContent: 'Кликните для подробной информации о Кремле'
             }, {
                 preset: 'islands#blueIcon',
                 iconColor: '#1890ff'
@@ -480,7 +466,6 @@
 
             const parkPlacemark = new ymaps.Placemark(parkCoords, {
                 hintContent: 'Парк Швейцария - Кликните для информации',
-                balloonContent: 'Кликните для подробной информации о парке'
             }, {
                 preset: 'islands#greenIcon',
                 iconColor: '#52c41a'
